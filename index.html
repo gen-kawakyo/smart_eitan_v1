@@ -108,6 +108,49 @@
 </head>
 <body class="text-slate-800">
 
+    <!-- Cover Page -->
+    <div id="coverPage" class="fixed inset-0 z-[200] bg-slate-900 flex flex-col items-center justify-center p-6 text-white transition-opacity duration-500">
+        <div class="absolute inset-0 opacity-20 pointer-events-none overflow-hidden">
+            <div class="absolute -top-24 -left-24 w-96 h-96 bg-blue-600 rounded-full blur-[120px]"></div>
+            <div class="absolute -bottom-24 -right-24 w-96 h-96 bg-emerald-600 rounded-full blur-[120px]"></div>
+        </div>
+        
+        <div class="relative z-10 flex flex-col items-center">
+            <div class="mb-4 p-4 bg-white/10 rounded-3xl backdrop-blur-md border border-white/20 shadow-2xl">
+                <i data-lucide="book-open-check" class="w-12 h-12 text-blue-400"></i>
+            </div>
+            <h1 class="text-4xl md:text-6xl font-black mb-12 tracking-tighter text-center">
+                英検<span class="text-blue-500">単語</span>学習
+            </h1>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-2xl">
+                <button onclick="loadLevel('5kyuu')" class="p-6 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all active:scale-95 flex flex-col items-center gap-2 group hover:border-blue-500/50">
+                    <span class="text-3xl font-black group-hover:text-blue-400">5級</span>
+                    <span class="text-[10px] opacity-50 uppercase font-bold tracking-widest">Grade 5</span>
+                </button>
+                <button onclick="loadLevel('4kyuu')" class="p-6 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all active:scale-95 flex flex-col items-center gap-2 group hover:border-blue-500/50">
+                    <span class="text-3xl font-black group-hover:text-blue-400">4級</span>
+                    <span class="text-[10px] opacity-50 uppercase font-bold tracking-widest">Grade 4</span>
+                </button>
+                <button onclick="loadLevel('3kyuu')" class="p-6 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all active:scale-95 flex flex-col items-center gap-2 group hover:border-blue-500/50">
+                    <span class="text-3xl font-black group-hover:text-blue-400">3級</span>
+                    <span class="text-[10px] opacity-50 uppercase font-bold tracking-widest">Grade 3</span>
+                </button>
+                <button onclick="loadLevel('j2kyuu')" class="p-6 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all active:scale-95 flex flex-col items-center gap-2 group hover:border-blue-500/50">
+                    <span class="text-3xl font-black group-hover:text-blue-400">準2級</span>
+                    <span class="text-[10px] opacity-50 uppercase font-bold tracking-widest">Pre-2</span>
+                </button>
+            </div>
+            
+            <p class="mt-12 text-slate-400 text-xs font-bold tracking-widest uppercase opacity-50">Select your level to start learning</p>
+        </div>
+        
+        <button onclick="loadLevel('all')" class="fixed bottom-8 right-8 p-4 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-2xl transition-all active:scale-90 flex items-center justify-center group z-20" title="全データを読み込む">
+            <i data-lucide="database" class="w-6 h-6"></i>
+            <span class="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out whitespace-nowrap ml-0 group-hover:ml-2 font-bold text-sm">全データ</span>
+        </button>
+    </div>
+
     <div class="h-screen flex flex-col overflow-hidden">
         <!-- Header -->
         <header class="bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-between shadow-sm z-50 shrink-0 h-14">
@@ -297,7 +340,14 @@
         let ttsMasterExIdx = -1; // 現在連続再生を開始した例文のインデックス
         let preferredVoice = null;
 
-        const defaultDataFiles = ['wordlist/5kyuu.json', 'wordlist/4kyuu.json', 'wordlist/3kyuu.json', 'wordlist/j2kyuu.json'];
+        const defaultDataFiles = ['wordlist/DB48-std.json', 'wordlist/DB48-phr.json', 'wordlist/DB48-mul.json'];
+        const eikenFiles = {
+            '5kyuu': ['wordlist/5kyuu.json'],
+            '4kyuu': ['wordlist/4kyuu.json'],
+            '3kyuu': ['wordlist/3kyuu.json'],
+            'j2kyuu': ['wordlist/j2kyuu.json'],
+            'all': ['wordlist/5kyuu.json', 'wordlist/4kyuu.json', 'wordlist/3kyuu.json', 'wordlist/j2kyuu.json', 'wordlist/DB48-std.json', 'wordlist/DB48-phr.json', 'wordlist/DB48-mul.json']
+        };
 
         const VISUAL_CONFIG = {
             'usage': { title: "Usage", color: "cyan", icon: "activity", label: "活用" },
@@ -358,7 +408,6 @@
         function init() {
             if (typeof lucide !== 'undefined') lucide.createIcons();
             initAlphaButtons();
-            loadInitialData();
             setupEventListeners();
             initTtsVoices();
         }
@@ -485,8 +534,16 @@
             return text.substring(0, 2).toUpperCase();
         }
 
-        async function loadInitialData() {
-            for (const filePath of defaultDataFiles) {
+        async function loadLevel(level) {
+            const files = eikenFiles[level] || defaultDataFiles;
+            dictionaryData = []; // Clear existing
+            
+            // Show loading state
+            const cover = document.getElementById('coverPage');
+            cover.style.opacity = '0.5';
+            cover.style.pointerEvents = 'none';
+
+            for (const filePath of files) {
                 try {
                     const res = await fetch(filePath);
                     if(res.ok) {
@@ -495,9 +552,18 @@
                         const norm = (Array.isArray(data) ? data : [data]).map(i => standardizeItem(i, source)).filter(i=>i);
                         dictionaryData = dictionaryData.concat(norm);
                     }
-                } catch(e) {}
+                } catch(e) {
+                    console.error(`Failed to load ${filePath}:`, e);
+                }
             }
+            
             onDataLoaded();
+            
+            // Hide cover page
+            cover.classList.add('opacity-0');
+            setTimeout(() => {
+                cover.classList.add('hidden');
+            }, 500);
         }
 
         function onDataLoaded() {
